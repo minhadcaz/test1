@@ -211,6 +211,8 @@ python -m evaluation.run_ablation --backend huggingface --dataset data/benchmark
 
 Thay đường dẫn theo gói thực tế. Importer nhận `SQL` hoặc `sql`, giữ evidence, kiểm tra đường dẫn DB và ghi `db_path` tương đối với JSON đầu ra. Không tự tải hay thay đổi database. Pipeline cũng nhận dataset JSON tự viết theo định dạng này. BIRD chưa được tải/chạy trong phiên triển khai.
 
+Để so sánh `greedy`, `self_consistency@k`, `pass@k`, CSC merge riêng và `adaptive_sc` trên Kaggle với checkpoint/resume, xem [hướng dẫn sampling BIRD Dev](evaluation/KAGGLE_SAMPLING.md). Runner mới dùng evaluator local, không thay thế protocol chính thức của BIRD.
+
 Tách tập chỉnh ngưỡng và tập đánh giá cuối; báo cáo rõ subset, ngôn ngữ, seed, model, prompt, giới hạn thời gian/kết quả và số câu bị lỗi. Nếu dịch câu hỏi tiếng Anh sang tiếng Việt, kiểm tra bản dịch và báo cáo thành một tập riêng.
 
 ## 9. Evaluation và ablation
