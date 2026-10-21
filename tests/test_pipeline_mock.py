@@ -21,6 +21,14 @@ def test_modes(db, config, mode, count):
         assert result.decision.reason == "fixed_complete"
 
 
+@pytest.mark.parametrize("fixed_k", [1, 3, 12])
+def test_fixed_mode_uses_configured_candidate_count(db, config, fixed_k):
+    config["sampling"].update(mode="fixed_sc", fixed_k=fixed_k, max_candidates=fixed_k)
+    result = Pipeline(config).run(db, "Có bao nhiêu sinh viên?")
+    assert len(result.candidates) == fixed_k
+    assert result.decision.reason == "fixed_complete"
+
+
 def test_all_demo_questions(db, config):
     pipeline = Pipeline(config)
     for item in json.loads((ROOT / "data/demo_questions.json").read_text(encoding="utf-8")):

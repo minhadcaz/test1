@@ -123,6 +123,10 @@ def test_report_ignores_unfinished_stages(tmp_path):
         output, {"questions": 2, "dataset_sha256": "hash", "model_id": "a", "merge_model_id": "b"}
     )
     assert next(x for x in report["metrics"] if x["metric"] == "pass@4")["accuracy"] == 1
+    assert (
+        next(x for x in report["metrics"] if x["metric"] == "pass@4")["average_total_generations"]
+        == 4
+    )
     assert next(x for x in report["metrics"] if x["metric"] == "slm_sql@4")["accuracy"] is None
 
 
@@ -157,6 +161,18 @@ def test_adaptive_uses_pipeline_and_is_checkpointed(db, config, tmp_path, monkey
     assert state["adaptive"]["stop_reason"] == "consensus"
     assert report["metrics"][-1]["metric"] == "adaptive_sc"
     assert report["metrics"][-1]["average_total_generations"] == 4
+    assert (
+        next(x for x in report["metrics"] if x["metric"] == "self_consistency@4")[
+            "average_total_generations"
+        ]
+        == 4
+    )
+    assert (
+        next(x for x in report["metrics"] if x["metric"] == "slm_sql@4")[
+            "average_total_generations"
+        ]
+        == 12
+    )
 
 
 def test_resumed_prefix_latency_is_unchanged(db, config, tmp_path, monkeypatch):
@@ -194,3 +210,41 @@ def test_resumed_prefix_latency_is_unchanged(db, config, tmp_path, monkeypatch):
     )
     after = json.loads(checkpoint.read_text())["latency_ms"]["self_consistency@4"]
     assert after == before
+
+
+def test_merge_model_failure_keeps_samples_and_explains_cause(db, config, tmp_path, monkeypatch):
+    monkeypatch.setattr(sampling, "KS", (4,))
+    dataset = tmp_path / "eval.json"
+    dataset.write_text(
+        json.dumps(
+            [
+                {
+                    "id": "one",
+                    "question": "Có bao nhiêu sinh viên?",
+                    "gold_sql": "SELECT COUNT(*) FROM students",
+                    "db_path": str(db),
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    def unavailable(_config):
+        try:
+            raise FileNotFoundError("merge weights missing")
+        except FileNotFoundError as error:
+            raise RuntimeError("Không tải được model") from error
+
+    monkeypatch.setattr(sampling, "create_backend", unavailable)
+    output = tmp_path / "run"
+    report = sampling.compare(config, dataset, output, backend=GenerationBackend())
+    state = json.loads((output / "checkpoints/00000.json").read_text())
+    assert len(state["sampled"]) == 4
+    assert "CscSQL-Merge-Qwen2.5-Coder-1.5B-Instruct" in state["error"]
+    assert "merge weights missing" in state["error"]
+    assert report["metrics"][0]["completed"] == 1
+
+    resumed = sampling.compare(
+        config, dataset, output, backend=GenerationBackend(), merge_backend=MergeBackend()
+    )
+    assert next(row for row in resumed["metrics"] if row["metric"] == "slm_sql@4")["completed"] == 1

@@ -29,6 +29,13 @@ project (can Internet va dung luong cho ca hai model):
 !python scripts/download_model.py --model-id cycloneboy/CscSQL-Merge-Qwen2.5-Coder-1.5B-Instruct
 ```
 
+Neu dung sau `self_consistency@4` voi `Khong tai duoc merge model`, doc
+`results/<run>/summary.json` truong `errors` de xem nguyen nhan goc. Kiem tra
+`models/CscSQL-Merge-Qwen2.5-Coder-1.5B-Instruct/config.json` va weights
+`*.safetensors`; neu chua co thi tai model merge bang lenh tren roi chay lai
+**cung output**. Neu root cause la CUDA out of memory, hai model dang tai tren
+cung GPU; giai phong VRAM/restart runtime (giu checkpoint) truoc khi resume.
+
 Neu `bird_eval.json` da import trong session nay, khong can import lai. Neu chua:
 
 ```python

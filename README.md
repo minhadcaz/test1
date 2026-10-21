@@ -228,7 +228,16 @@ python -m evaluation.plot_results results/mock-ablation/ablation.csv
 
 ```powershell
 python -m evaluation.evaluate --backend huggingface --mode greedy --dataset data/evaluation_questions.json --limit 5 --output results/real-greedy
+python -m evaluation.evaluate --backend huggingface --mode fixed_sc --fixed-k 12 --dataset data/evaluation_questions.json --limit 5 --output results/real-fixed-sc12
 python -m evaluation.run_ablation --backend huggingface --dataset data/evaluation_questions.json --output results/real-ablation
+```
+
+Để test riêng fixed SC với số candidate tùy ý, dùng `--mode fixed_sc --fixed-k N`. Ví dụ `--fixed-k 12`
+sẽ sinh đúng 12 candidate cho mỗi câu; CLI tự nâng `max_candidates` nếu cấu hình hiện tại thấp hơn K.
+Với smoke test một câu trên database mẫu:
+
+```powershell
+python scripts/smoke_test.py --backend mock --mode fixed_sc --fixed-k 3
 ```
 
 Mỗi lần evaluation ghi `predictions.jsonl`, `summary.csv`, `summary.json`, `config.json`. Summary có hash dataset và seed. `--output` chỉ đến thư mục kết quả cùng tên sẽ ghi lại các báo cáo trong đó; bỏ tham số để dùng timestamp.

@@ -31,6 +31,16 @@ def request_stop(_signum, _frame):
     STOP = True
 
 
+def error_details(error: Exception) -> str:
+    root = error
+    while root.__cause__ is not None:
+        root = root.__cause__
+    summary = f"{type(error).__name__}: {error}"
+    if root is not error:
+        summary += f" | Root cause: {type(root).__name__}: {root}"
+    return summary[:1200]
+
+
 def atomic_json(path: Path, value: dict):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
@@ -157,7 +167,7 @@ def aggregate(output: Path, manifest: dict) -> dict:
                 + (
                     len(s["merges"][str(k)]["candidates"])
                     if key.startswith("slm_sql@") and s["merges"][str(k)]["status"] == "revised"
-                    else k
+                    else 0
                 )
                 for s in completed
             )
@@ -220,6 +230,10 @@ def compare(
     if limit is not None:
         if limit < 1:
             raise ValueError("--limit phai duong.")
+        if limit > len(items):
+            print(
+                f"Dataset chi co {len(items)} cau; --limit {limit} khong tao them cau.", flush=True
+            )
         items = items[:limit]
     if database.resolve() == DEFAULT_DB.resolve():
         create_database()
@@ -373,7 +387,13 @@ def compare(
                         if merger is None:
                             merge_config = deepcopy(run_config)
                             merge_config["model"]["model_id"] = merge_model_id
-                            merger = create_backend(merge_config)
+                            try:
+                                merger = create_backend(merge_config)
+                            except Exception as error:
+                                raise RuntimeError(
+                                    f"Khong tai duoc merge model {merge_model_id}; "
+                                    "kiem tra weights va VRAM."
+                                ) from error
                         merger.start_request(run_config["seed"] + index * 1000 + 500 + k)
                         merge_params = dict(run_config["generation"], temperature=0.8)
                         started = time.perf_counter()
@@ -415,7 +435,7 @@ def compare(
         except KeyboardInterrupt:
             STOP = True
         except Exception as error:
-            state["error"] = f"{type(error).__name__}: {error}"
+            state["error"] = error_details(error)
             state["retryable"] = isinstance(error, (RuntimeError, ImportError))
             atomic_json(path, state)
             aggregate(output, manifest)

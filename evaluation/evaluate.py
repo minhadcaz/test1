@@ -86,6 +86,8 @@ def main():
     parser.add_argument("--config", type=Path)
     parser.add_argument("--backend", choices=["mock", "huggingface"])
     parser.add_argument("--mode", choices=["greedy", "fixed_sc", "adaptive_sc"])
+    parser.add_argument("--fixed-k", type=int,
+                        help="Số candidate khi dùng fixed_sc (1-128).")
     parser.add_argument("--dataset", type=Path, default=ROOT / "data/evaluation_questions.json")
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
     parser.add_argument("--output", type=Path)
@@ -98,6 +100,14 @@ def main():
         config["model"]["backend"] = args.backend
     if args.mode:
         config["sampling"]["mode"] = args.mode
+    if args.fixed_k is not None:
+        if not 1 <= args.fixed_k <= 128:
+            parser.error("--fixed-k phải nằm trong khoảng 1-128.")
+        config["sampling"]["fixed_k"] = args.fixed_k
+        # fixed_sc cũng chịu trần max_candidates; nâng trần để không cắt K.
+        config["sampling"]["max_candidates"] = max(
+            config["sampling"]["max_candidates"], args.fixed_k
+        )
     if args.device:
         config["model"]["device"] = args.device
     if args.model_id:

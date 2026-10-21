@@ -17,6 +17,7 @@ def main():
     parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     parser.add_argument("--model-id")
     parser.add_argument("--mode", choices=["greedy", "fixed_sc", "adaptive_sc"], default="adaptive_sc")
+    parser.add_argument("--fixed-k", type=int, help="Số candidate khi dùng fixed_sc (1-128).")
     parser.add_argument("--max-new-tokens", type=int, default=512)
     args = parser.parse_args()
     config = load_config()
@@ -24,6 +25,13 @@ def main():
     if args.model_id:
         config["model"]["model_id"] = args.model_id
     config["sampling"]["mode"] = args.mode
+    if args.fixed_k is not None:
+        if not 1 <= args.fixed_k <= 128:
+            parser.error("--fixed-k phải nằm trong khoảng 1-128.")
+        config["sampling"]["fixed_k"] = args.fixed_k
+        config["sampling"]["max_candidates"] = max(
+            config["sampling"]["max_candidates"], args.fixed_k
+        )
     config["generation"]["max_new_tokens"] = args.max_new_tokens
     db_path = create_database()
     result = Pipeline(config).run(db_path, "Có bao nhiêu sinh viên?")
